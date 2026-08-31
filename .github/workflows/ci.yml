@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run TDD unit tests
+        run: python3 -m unittest discover -s tests -v
+      - name: Artifact checker smoke test
+        run: |
+          mkdir -p /tmp/art
+          truncate -s 1M /tmp/art/system.img
+          python3 scripts/artifact_checker.py --dir /tmp/art
+      - name: Artifact checker negative test
+        run: |
+          mkdir -p /tmp/art_bad
+          truncate -s 3G /tmp/art_bad/system.img
+          python3 scripts/artifact_checker.py --dir /tmp/art_bad && exit 1 || echo "expected failure caught"
+
+  # AOSP 全量构建 job：需要 larger runner（64 核/128GB RAM/500GB SSD，按分钟计费）
+  # 或自托管 runner。默认 disabled，避免误触发产生费用；配置好 runner 后放开。
+  aosp-build:
+    runs-on: [self-hosted, aosp]
+    if: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Repo init (shallow)
+        run: bash scripts/repo_sync.sh
+      - name: Build GSI product
+        run: bash scripts/build.sh
+      - name: Verify artifacts
+        run: python3 scripts/artifact_checker.py --dir "$(cat out_dir.txt)"

@@ -1,0 +1,10 @@
+# AOSP 构建与工作产物
+out/
+out_dir.txt
+*.img
+ccache/
+
+# 本地工具
+__pycache__/
+*.pyc
+.env

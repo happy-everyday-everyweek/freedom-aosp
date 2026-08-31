@@ -1,0 +1,19 @@
+"""构建产物校验器（TDD 步骤：先让测试红，再实现到绿）。
+
+校验产物目录中的镜像文件，供 CI 构建结束后执行。
+"""
+import argparse
+import os
+from dataclasses import dataclass
+
+
+@dataclass
+class ArtifactResult:
+    path: str
+    ok: bool
+    size: int = 0
+    reason: str = ""
+
+
+def check_artifacts(art_dir: str, system_max: int = 2 << 30) -> list[ArtifactResult]:
+    raise NotImplementedError("TDD 红色阶段：尚未实现")
