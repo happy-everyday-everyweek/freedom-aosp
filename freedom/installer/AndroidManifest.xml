@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FreedomInstaller：系统应用安装接口与权限门声明（骨架，随实现完善） -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.freedom.installer"
+    coreApp="true">
+
+    <!-- 系统级权限（生态工具资格）：最终定义迁移至 framework core/res，
+         此处先声明占位，后续由系统统一发放/回收 -->
+    <permission android:name="com.freedom.installer.permission.SYSTEM_EXTENDED"
+        android:protectionLevel="signature" />
+
+    <uses-permission android:name="android.permission.INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.DELETE_PACKAGES" />
+    <uses-permission android:name="android.permission.GRANT_RUNTIME_PERMISSIONS" />
+    <uses-permission android:name="android.permission.REVOKE_RUNTIME_PERMISSIONS" />
+
+    <application
+        android:label="Freedom Installer"
+        android:allowBackup="false">
+
+        <!-- 安装入口：文件管理器/浏览器发起安装（ACTION_VIEW APK / INSTALL_PACKAGE） -->
+        <activity android:name="com.freedom.installer.InstallerActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.INSTALL_PACKAGE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/vnd.android.package-archive" />
+            </intent-filter>
+        </activity>
+
+        <!-- 安装确认：高级功能菜单（默认展开） -->
+        <activity android:name="com.freedom.installer.InstallConfirmActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar" />
+
+    </application>
+</manifest>
