@@ -1,0 +1,22 @@
+// FreedomInstaller — 系统底层应用安装子系统（自研，platform 签名 + privileged）
+android_app {
+    name: "FreedomInstaller",
+
+    srcs: [
+        "src/**/*.java",
+        "src/**/*.kt",
+    ],
+
+    sdk_version: "system_current",
+    min_sdk_version: "29",
+    privileged: true,
+    certificate: "platform",
+
+    static_libs: [
+        // UI/依赖清单随实现逐步确认（Material3 组件源自 framework，见 README）
+    ],
+
+    optimize: {
+        proguard_flags_files: ["proguard.flags"],
+    },
+}
