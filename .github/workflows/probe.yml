@@ -24,8 +24,8 @@ jobs:
       - name: Sync build system only
         run: |
           cd src
-          time repo sync -c -j4 --no-clone-bundle --no-tags -q build 2>&1 | tail -2
-          echo "--- after build:" && du -sh .repo build 2>/dev/null && df -h / | tail -1
+          time repo sync -c -j4 --no-clone-bundle --no-tags -q build/bazel build/make build/soong 2>&1 | tail -2
+          echo "--- after build:" && du -sh . && df -h / | tail -1
       - name: Sync toolchains (build-tools + clang)
         run: |
           cd src
