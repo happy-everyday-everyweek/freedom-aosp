@@ -1,0 +1,74 @@
+name: sync-upstream
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream:
+        description: 上游仓库根（googlesource）
+        required: true
+        default: https://android.googlesource.com/platform/packages/apps/PackageInstaller
+      ref:
+        description: 上游 ref，例如 refs/heads/master 或 refs/tags/android-17.0.0_r1
+        required: true
+        default: refs/heads/master
+      files:
+        description: 相对路径列表，逗号分隔（禁止 .. 与绝对路径）
+        required: true
+        default: src/com/android/packageinstaller/InstallFlow.java
+      dest:
+        description: 存入本仓库的目标前缀
+        required: true
+        default: upstream/packages/apps/PackageInstaller
+      branch:
+        description: 目标分支
+        required: true
+        default: main
+
+jobs:
+  pull-files:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 1
+      - name: Download upstream files
+        run: |
+          python3 - <<'PY'
+          import base64, os, sys, urllib.request
+          upstream = "${{ inputs.upstream }}".rstrip('/')
+          ref = "${{ inputs.ref }}"
+          dest = "${{ inputs.dest }}"
+          files = [f.strip() for f in "${{ inputs.files }}".split(',') if f.strip()]
+          if not files:
+              sys.exit("no files given")
+          for f in files:
+              if f.startswith('/') or '..' in f.split('/'):
+                  sys.exit("bad path: " + f)
+              url = f"{upstream}/+/{ref}/{f}?format=TEXT"
+              try:
+                  data = urllib.request.urlopen(url, timeout=180).read()
+                  content = base64.b64decode(data)
+              except Exception as e:
+                  print("SKIP", f, "->", e)
+                  continue
+              out = os.path.join(dest, f)
+              os.makedirs(os.path.dirname(out), exist_ok=True)
+              with open(out, 'wb') as fh:
+                  fh.write(content)
+              print("OK", f, "->", out, len(content), "bytes")
+          PY
+      - name: Commit and push
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "sync-upstream: pull files from ${{ inputs.upstream }}@${{ inputs.ref }}" -q
+            git push "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:${{ inputs.branch }}
+            echo "PUSHED"
+          else
+            echo "NO_CHANGES"
+          fi
