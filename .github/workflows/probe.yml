@@ -1,0 +1,45 @@
+name: probe
+
+on:
+  workflow_dispatch:
+
+jobs:
+  storage-probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: System info
+        run: |
+          echo "CPU: $(nproc) cores, RAM: $(free -h | awk '/Mem:/{print $2}'), DISK:" && df -h / | tail -1
+      - name: Install repo
+        run: |
+          sudo apt-get update -q >/dev/null
+          sudo apt-get install -y -q curl python3 git >/dev/null
+          sudo curl -s -o /usr/local/bin/repo https://storage.googleapis.com/git-repo-downloads/repo
+          sudo chmod +x /usr/local/bin/repo
+          repo --version | head -2
+      - name: Init shallow manifest (android-latest-release)
+        run: |
+          mkdir -p src && cd src
+          repo init --depth=1 -u https://android.googlesource.com/platform/manifest -b android-latest-release --no-repo-verify 2>&1 | tail -3
+      - name: Sync build system only
+        run: |
+          cd src
+          time repo sync -c -j4 --no-clone-bundle --no-tags -q build 2>&1 | tail -2
+          echo "--- after build:" && du -sh .repo build 2>/dev/null && df -h / | tail -1
+      - name: Sync toolchains (build-tools + clang)
+        run: |
+          cd src
+          time repo sync -c -j4 --no-clone-bundle --no-tags -q prebuilts/build-tools prebuilts/clang/host/linux-x86 build/make build/soong 2>&1 | tail -2
+          echo "--- after toolchains:" && du -sh . && df -h / | tail -1
+      - name: Sync frameworks/base
+        run: |
+          cd src
+          time repo sync -c -j4 --no-clone-bundle --no-tags -q frameworks/base frameworks/av 2>&1 | tail -2
+          echo "--- after frameworks:" && du -sh . && df -h / | tail -1
+      - name: Soong bootstrap memory test
+        run: |
+          cd src
+          source build/envsetup.sh >/dev/null 2>&1
+          export LC_ALL=C
+          (timeout 300 bash -c 'source build/envsetup.sh >/dev/null 2>&1 && cd frameworks/base && m -j2 framework-minus-apex 2>&1 | tail -5') || echo "bootstrap/compile exited non-zero (expected on 7GB RAM, capturing output)"
+          df -h / | tail -1
