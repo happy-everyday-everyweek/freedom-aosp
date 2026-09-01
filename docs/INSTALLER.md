@@ -35,12 +35,19 @@
 2. 权限门：服务接口要求调用方持有"系统级权限"（signature/privileged 级，见 SPEC 能力分层），未授权应用无法调用；目标应用全程无感知。
 3. 无额外 daemon、无 shizuku server、无 su 进程。
 
+## 上游现状与自研决策（2026-09-01 探明）
+
+- AOSP master 与 android-latest-release 的 manifest 中均无 packageinstaller 项目；packages/apps/PackageInstaller 仓库当前承载的是 PermissionController 应用。
+- 结论：Android 16/17 已把安装确认 UI 移出独立安装器 app，默认树无 com.android.packageinstaller。
+- 因此 Freedom Installer 完全自研，新建应用（com.freedom.installer，platform 签名 + privileged），不依赖上游安装器源码；安装流程直接对接 framework 内部安装 API（Android 17 的 PackageManager install 链路）。
+- 参考物：InstallerX Revived 仅作 UI（Material 3 Expressive）与功能清单参考；AOSP PermissionController / Settings 中残留的安装 UI 组件可在适配期参考。
+
 ## 落地文件（AOSP 侧待改清单，随源码到位逐步确认）
 
-- packages/apps/PackageInstaller：UI 改造（高级菜单默认展开）、安装选项透传、新安装入口。
-- frameworks/base（services/core/java/com/android/server/pm）：新增安装服务注册与 installFlags 支持、系统应用两档实现。
+- freedom/installer（新建系统应用）：Android.bp、AndroidManifest.xml、UI（高级菜单默认展开）、安装选项透传、系统服务对接。
+- frameworks/base（services/core/java/com/android/server/pm）：新增安装特权服务注册与 installFlags 支持、系统应用两档实现。
 - frameworks/base（core/res）：新增"系统级权限"定义与安装子系统的权限声明。
-- 产品配置：安装器作为核心组件保留（不在精简剔除清单）。
+- 产品配置：freedom/installer 作为核心组件保留（不在精简剔除清单）。
 
 ## 与 installerX 差异
 
