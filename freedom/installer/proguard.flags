@@ -1,0 +1,2 @@
+# FreedomInstaller ProGuard 规则（随实现补充 keep 规则）
+# 无第三方依赖时保持默认；引入的库若需要 keep 在此追加
