@@ -1,0 +1,68 @@
+name: compile-installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 目标分支（默认 feat/one-tap-install）
+        required: false
+        default: feat/one-tap-install
+  push:
+    branches: [feat/one-tap-install]
+    paths:
+      - 'freedom/installer/**'
+      - '.github/workflows/compile-installer.yml'
+
+jobs:
+  build-installer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref_name }}
+
+      - name: Install repo
+        run: |
+          sudo apt-get update -q >/dev/null
+          sudo apt-get install -y -q curl python3 git >/dev/null
+          sudo curl -s -o /usr/local/bin/repo https://storage.googleapis.com/git-repo-downloads/repo
+          sudo chmod +x /usr/local/bin/repo
+
+      - name: Init manifest (shallow, android-latest-release)
+        run: |
+          mkdir -p src && cd src
+          repo init --depth=1 -u https://android.googlesource.com/platform/manifest \
+            -b android-latest-release --no-repo-verify 2>&1 | tail -2
+
+      - name: Sync minimal source set
+        run: |
+          cd src
+          time repo sync -c -j4 --no-clone-bundle --no-tags -q \
+            build/make build/soong \
+            prebuilts/build-tools prebuilts/clang/host/linux-x86 \
+            frameworks/base device/generic/arm64 packages/modules/Permission 2>&1 | tail -3
+          du -sh . && df -h / | tail -1
+
+      - name: Drop FreedomInstaller into tree
+        run: |
+          mkdir -p $GITHUB_WORKSPACE/src/packages/apps/FreedomInstaller
+          cp -r $GITHUB_WORKSPACE/freedom/installer/* $GITHUB_WORKSPACE/src/packages/apps/FreedomInstaller/
+          ls -R $GITHUB_WORKSPACE/src/packages/apps/FreedomInstaller | head -20
+
+      - name: Enable swap (OOM guard)
+        run: |
+          sudo dd if=/dev/zero of=/swapfile bs=1M count=6144 status=none
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile >/dev/null
+          sudo swapon /swapfile
+          free -h
+
+      - name: Build FreedomInstaller
+        run: |
+          cd $GITHUB_WORKSPACE/src
+          export LC_ALL=C
+          source build/envsetup.sh >/dev/null 2>&1
+          lunch aosp_arm64-eng 2>&1 | tail -2
+          m -j4 FreedomInstaller 2>&1 | tail -45
+          echo "=== artifacts ==="
+          find out -name 'FreedomInstaller.apk' -o -name 'FreedomInstaller*.apk' | head -5
