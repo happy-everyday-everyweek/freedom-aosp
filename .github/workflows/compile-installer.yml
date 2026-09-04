@@ -39,7 +39,7 @@ jobs:
           cd src
           time repo sync -c -j4 --no-clone-bundle --no-tags -q \
             build/make build/soong \
-            prebuilts/build-tools prebuilts/clang/host/linux-x86 \
+            prebuilts/build-tools prebuilts/clang/host/linux-x86 prebuilts/go \
             frameworks/base device/generic/arm64 packages/modules/Permission 2>&1 | tail -3
           du -sh . && df -h / | tail -1
 
@@ -63,10 +63,11 @@ jobs:
 
       - name: Build FreedomInstaller
         run: |
+          set -o pipefail
           cd $GITHUB_WORKSPACE/src
           export LC_ALL=C
-          source build/envsetup.sh >/dev/null 2>&1
-          lunch aosp_arm64-eng 2>&1 | tail -2
+          source build/envsetup.sh
+          lunch sdk_arm64-eng 2>&1 | tail -3
           m -j4 FreedomInstaller 2>&1 | tail -45
           echo "=== artifacts ==="
           find out -name 'FreedomInstaller.apk' -o -name 'FreedomInstaller*.apk' | head -5
