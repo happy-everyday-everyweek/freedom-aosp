@@ -49,13 +49,17 @@ jobs:
           cp -r $GITHUB_WORKSPACE/freedom/installer/* $GITHUB_WORKSPACE/src/packages/apps/FreedomInstaller/
           ls -R $GITHUB_WORKSPACE/src/packages/apps/FreedomInstaller | head -20
 
-      - name: Enable swap (OOM guard)
+      - name: Ensure swap (OOM guard)
         run: |
-          sudo dd if=/dev/zero of=/swapfile bs=1M count=6144 status=none
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile >/dev/null
-          sudo swapon /swapfile
-          free -h
+          if free -h | awk '/Swap:/{print $2}' | grep -qE '^[1-9]'; then
+            echo "swap already enabled:"; free -h
+          else
+            sudo fallocate -l 6G /tmp/ci_swap
+            sudo chmod 600 /tmp/ci_swap
+            sudo mkswap /tmp/ci_swap >/dev/null
+            sudo swapon /tmp/ci_swap
+            free -h
+          fi
 
       - name: Build FreedomInstaller
         run: |
